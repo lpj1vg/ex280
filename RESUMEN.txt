@@ -1,0 +1,75 @@
+# HELM
+
+helm repo list
+helm repo add \
+  do280-repo http://helm.ocp4.example.com/charts
+helm search repo --versions
+helm show values do280-repo/etherpad --version 0.0.6
+helm install <app-name> do280-repo/etherpad \
+  -f values-test.yaml --version 0.0.6
+
+# GENERAR FICHERO SOPORTE
+
+1. Crear directorio para la salida (opcional, pero ordenado)
+mkdir ~/ocp_support_data
+
+2. Ejecutar must-gather (como cluster-admin)
+oc adm must-gather --dest-dir=~/ocp_support_data
+
+# HTPASSWD
+
+htpasswd -c -b -B tmp_users user1 password1
+htpasswd -b -B tmp_users user2 password2
+htpasswd -b -B tmp_users user3 password3
+
+oc create secret generic htpasswd-secret \
+    --from-file htpasswd=tmp_users \
+    -n openshift-config
+
+oc get oauth cluster -o yaml > oauth.yaml
+
+spec:
+  identityProviders:
+  - htpasswd:
+      fileData:
+        name: htpasswd-secret  # Nombre del recurso secreto que contiene el archivo htpasswd con los usuarios y contraseñas.
+    mappingMethod: claim
+    name: htpasswd             # Nombre identificador del proveedor de identidad.
+    type: HTPasswd
+
+oc replace -f oauth.yaml
+watch oc get pods -n openshift-authentication
+
+## Agrega el ClusterRole 'cluster-admin' al usuario 'user1'.
+## Esto otorga al usuario permisos completos sobre todo el clúster.
+oc adm policy add-cluster-role-to-user cluster-admin user1
+
+## Elimina el ClusterRole 'self-provisioner' del grupo 'system:authenticated:oauth'.
+## Esto restringe la capacidad de los usuarios autenticados de crear proyectos por sí mismos.
+oc adm policy remove-cluster-role-from-group self-provisioner system:authenticated:oauth
+
+## Crea un nuevo grupo de usuarios llamado 'managers'.
+oc adm groups new managers
+
+## Agrega el usuario 'user1' al grupo 'managers'.
+oc adm groups add-users managers user1
+
+## Otorga al grupo 'managers' la capacidad de crear proyectos (el rol 'self-provisioner').
+oc adm policy add-cluster-role-to-group self-provisioner managers
+
+# Otorga al grupo 'developers' el rol 'edit' dentro del proyecto '<namespace>'.
+# El rol 'edit' permite modificar la mayoría de los recursos dentro de un proyecto.
+oc policy add-role-to-group edit developers -n <namespace>
+
+# Crea un nuevo grupo de usuarios llamado 'qa'.
+oc adm groups new qa
+
+# Agrega el usuario 'user3' al grupo 'qa'.
+oc adm groups add-users qa tester
+
+# Otorga al grupo 'qa' el rol 'view' dentro del proyecto '<namespace>'.
+# El rol 'view' permite ver la mayoría de los recursos dentro de un proyecto, pero no modificarlos.
+oc policy add-role-to-group view qa -n <namespace>
+
+# Eliminar el usuario kubeadmin (sólo tras verificar acceso con con IdP)
+oc delete secret kubeadmin -n kube-system
