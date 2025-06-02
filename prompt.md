@@ -1,0 +1,1 @@
+Mejora este documento. Añade comentarios de cara al estucio de la certificación EX280. Si es posible hacerlo por consola web, indica brevemente cómo se haría. Contesta en español de España.
