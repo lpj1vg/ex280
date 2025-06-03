@@ -1,6 +1,7 @@
 # Enable Developer Self-Service
 
-**Ref: OpenShift Container Platform 4.14 Building applications (2.3)**
+**Ref: Building applications (2.3)**
+**Ref: Postinstallation configuration > Modifying the template for new projects (8.2)**
 
 Crear una template de proyecto con cuotas y límites.
 
